@@ -1,10 +1,19 @@
-﻿var http = require('http');
+﻿// imports
+var http = require('http');
 var fs = require('fs');
 var formidable = require("formidable");
 var util = require('util');
 var jsonfile = require('jsonfile');
+var dataapi = require('./tools/data_api.js');
+var mongoose = require('mongoose');
 
-var file_name = '/Users/Omri/Downloads/temp/data.json';
+// declare variables
+var server = 'localhost';
+var port = 27017;
+var database_name = 'test';
+// start mongo
+var url = 'mongodb://' + server + ':' + port + '/' + database_name;
+var app_mongo = dataapi.mongo_init(mongoose, url);
 
 var server = http.createServer(function (req, res) {
     if (req.method.toLowerCase() == 'get') {
@@ -86,12 +95,20 @@ function processFormFieldsIndividual(req, res) {
         res.writeHead(200, {
             'content-type': 'text/plain'
         });
-        res.write('\nwriting json to file');
+
+        //set json to insertion
         json_string = json_string.slice(0,-1) + '}';
-        var jsonObj = JSON.parse(json_string);
-        //JSON.stringify(json_string)
+        var jsonObj = JSON.parse(json_string); //JSON.stringify(json_string)
+
+        //write json to Mongo:
+        var doc_id = dataapi.insert_doc(app_mongo, jsonObj);
+
+        // write json to HD:
+        var file_name = '/Users/Omri/Downloads/temp/' + doc_id + '.json';
+        res.write('\nwriting json to file on disk\n');
+        res.write(file_name);
         jsonfile.writeFileSync(file_name, jsonObj);
-        res.write('\ndone writing json\n\n');
+        res.write('\ndone writing json file to disk\n\n');
 
         res.end(util.inspect({ fields: fields }));
     });
@@ -103,3 +120,7 @@ console.log("server listening on 1185");
 
 //TODO write images as base 64
 //TODO write to disk and mongo
+//TODO change file name to mongo key
+//TODO use geo 2d index in mongo for location
+//TODO user and pw for mongo
+//TODO deal with numbers in json, now it's "5" and not just 5
